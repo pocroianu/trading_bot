@@ -1,3 +1,4 @@
+from datetime import datetime
 import alpaca_trade_api as tradeapi
 
 from learning_model import fetch_data_multiple, preprocess_data, train_models
@@ -12,18 +13,20 @@ ALPACA_API_SECRET = os.getenv("ALPACA_API_SECRET")
 BASE_URL = "https://paper-api.alpaca.markets"  # Use paper trading for testing
 
 
-QUANTITY = 5
+QUANTITY = 2
 
 # Connect to the API
 api = tradeapi.REST(ALPACA_API_KEY, ALPACA_API_SECRET, BASE_URL, api_version="v2")
 
 
+# Placeholder 
 # Define your trading strategy
 def should_buy(symbol):
     # Implement your buy logic here
     return True
 
 
+# Placeholder
 def should_sell(symbol):
     # Implement your sell logic here
     return False
@@ -45,11 +48,12 @@ def generate_signals(models, feature_names, data):
         next_day_prediction = model.predict(X.iloc[-1].values.reshape(1, -1))[0]
 
         # Implement a trading strategy based on the prediction
-        current_price = df.iloc[-1]["4. close"]
+        current_price = df.iloc[-1]["Close"]  # Update this line
         signal = "buy" if next_day_prediction > current_price else "sell"
         signals[symbol] = signal
 
     return signals
+
 
 
 def execute_trades(signals):
@@ -69,13 +73,20 @@ def execute_trades(signals):
                 symbol=symbol, qty=qty, side="buy", type="market", time_in_force="gtc"
             )
         elif trade_type == "sell" and position:
+            # Get the actual quantity of shares owned
+            owned_qty = int(position[0].qty)
+
+            # Sell the available shares, even if it's less than the requested quantity
+            sell_qty = min(owned_qty, qty)
+
             # Submit a sell order
-            print(f"Submitting a sell order for {symbol}, quantity: {qty}, time_in_force: gtc")
+            print(f"Submitting a sell order for {symbol}, quantity: {sell_qty}, time_in_force: gtc")
             api.submit_order(
-                symbol=symbol, qty=qty, side="sell", type="market", time_in_force="gtc"
+                symbol=symbol, qty=sell_qty, side="sell", type="market", time_in_force="gtc"
             )
         else:
             print(f"No trading done for {symbol}, position was: {position}")
+
 
 
 # Schedule the bot to run once per day
@@ -85,7 +96,8 @@ if __name__ == "__main__":
 
     # Fetch historical data for multiple stocks
     start = "2018-01-01"
-    end = "2022-01-01"
+    # end = "2022-01-01"
+    end=datetime.now()
     data = fetch_data_multiple(symbols, start, end)
 
     # Train models for multiple stocks

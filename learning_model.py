@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 import os
 
+
+import yfinance as yf
+
 load_dotenv()
 
 alpha_vantage_api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
@@ -18,13 +21,7 @@ alpha_vantage_api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
 # Fetch historical data for a stock
 def fetch_data(symbol, start, end):
     try:
-        ts = TimeSeries(key=alpha_vantage_api_key, output_format="pandas")
-        df, _ = ts.get_daily_adjusted(symbol, outputsize="full")
-
-        # Convert the date strings to datetime objects, sort the index, and filter the date range
-        df.index = pd.to_datetime(df.index)
-        df = df.sort_index()
-        df = df.loc[start:end]
+        df = yf.download(symbol, start=start, end=end)
 
         if df.empty:
             print(f"No data found for {symbol} in the specified date range.")
@@ -51,34 +48,35 @@ def preprocess_data(df):
     df_processed = df.copy()
 
     # Calculate moving averages
-    df_processed["SMA_10"] = talib.SMA(df_processed["4. close"], timeperiod=10)
-    df_processed["SMA_20"] = talib.SMA(df_processed["4. close"], timeperiod=20)
+    df_processed["SMA_10"] = talib.SMA(df_processed["Close"], timeperiod=10)
+    df_processed["SMA_20"] = talib.SMA(df_processed["Close"], timeperiod=20)
 
     # Calculate Bollinger Bands
     (
         df_processed["upper_BB"],
         df_processed["middle_BB"],
         df_processed["lower_BB"],
-    ) = talib.BBANDS(df_processed["4. close"], timeperiod=20)
+    ) = talib.BBANDS(df_processed["Close"], timeperiod=20)
 
     # Calculate RSI
-    df_processed["RSI"] = talib.RSI(df_processed["4. close"], timeperiod=14)
+    df_processed["RSI"] = talib.RSI(df_processed["Close"], timeperiod=14)
 
     # Calculate MACD
     df_processed["MACD"], df_processed["MACD_signal"], _ = talib.MACD(
-        df_processed["4. close"], fastperiod=12, slowperiod=26, signalperiod=9
+        df_processed["Close"], fastperiod=12, slowperiod=26, signalperiod=9
     )
 
     # Drop missing values
     df_processed = df_processed.dropna()
 
     # Define the target variable (e.g., next day's close)
-    df_processed["target"] = df_processed["4. close"].shift(-1)
+    df_processed["target"] = df_processed["Close"].shift(-1)
 
     # Drop the last row, which will have a missing target value
     df_processed = df_processed[:-1]
 
     return df_processed
+
 
 
 # Train and evaluate a machine learning model
