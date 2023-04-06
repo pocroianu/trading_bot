@@ -9,13 +9,13 @@ from sklearn.ensemble import GradientBoostingRegressor
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 import os
+from sklearn.model_selection import GridSearchCV
 
 
 import yfinance as yf
 
-load_dotenv()
 
-alpha_vantage_api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+load_dotenv()
 
 
 # Fetch historical data for a stock
@@ -66,6 +66,14 @@ def preprocess_data(df):
         df_processed["Close"], fastperiod=12, slowperiod=26, signalperiod=9
     )
 
+    df_processed["EMA_10"] = talib.EMA(df_processed["Close"], timeperiod=10)
+    df_processed["EMA_30"] = talib.EMA(df_processed["Close"], timeperiod=30)
+    df_processed["Stoch"], df_processed["Stoch_signal"] = talib.STOCH(df_processed["High"], df_processed["Low"], df_processed["Close"])
+    df_processed["OBV"] = talib.OBV(df_processed["Close"], df_processed["Volume"])
+    df_processed["ATR"] = talib.ATR(df_processed["High"], df_processed["Low"], df_processed["Close"])
+    df_processed["ROC"] = talib.ROC(df_processed["Close"])
+    df_processed["MACD"], df_processed["MACD_signal"], df_processed["MACD_hist"] = talib.MACD(df_processed["Close"], fastperiod=12, slowperiod=26, signalperiod=9)
+
     # Drop missing values
     df_processed = df_processed.dropna()
 
@@ -87,14 +95,24 @@ def train_model(df):
     X = df[features]
     y = df[target]
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    model = GradientBoostingRegressor(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
+    model = GradientBoostingRegressor(random_state=42)
 
-    y_pred = model.predict(X_test)
+    # Hyperparameter tuning with GridSearchCV
+    param_grid = {
+        "n_estimators": [50, 100, 150],
+        "learning_rate": [0.01, 0.1, 0.2],
+        "max_depth": [3, 4, 5],
+        "subsample": [0.8, 0.9, 1],
+    }
+
+    grid_search = GridSearchCV(model, param_grid, cv=5, scoring="neg_mean_squared_error", n_jobs=-1, verbose=1)
+    grid_search.fit(X_train, y_train)
+
+    best_model = grid_search.best_estimator_
+
+    y_pred = best_model.predict(X_test)
     mse = mean_squared_error(y_test, y_pred)
     print(f"Mean Squared Error: {mse}")
 
@@ -108,7 +126,7 @@ def train_model(df):
     plt.legend()
     # plt.show()
 
-    return model, features
+    return best_model, features
 
 
 # Train and evaluate a machine learning model for multiple stocks

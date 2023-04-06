@@ -19,8 +19,7 @@ QUANTITY = 2
 api = tradeapi.REST(ALPACA_API_KEY, ALPACA_API_SECRET, BASE_URL, api_version="v2")
 
 
-# Placeholder 
-# Define your trading strategy
+# Placeholder
 def should_buy(symbol):
     # Implement your buy logic here
     return True
@@ -92,7 +91,7 @@ def execute_trades(signals):
 # Schedule the bot to run once per day
 if __name__ == "__main__":
     # Define the list of stock symbols
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMC", "COST"]
+    symbols = ["AAPL", "MSFT", "GOOGL", "AMC", "COST", "LEVI", "SKLZ", "ABNB", "GOOG", "TELL", "BABA", "GFAI", "DEA", "DNA", "BOIL"]
 
     # Fetch historical data for multiple stocks
     start = "2018-01-01"
