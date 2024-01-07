@@ -1,19 +1,11 @@
-import pandas as pd
-import numpy as np
-from alpha_vantage.timeseries import TimeSeries
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
-import talib
-from sklearn.ensemble import GradientBoostingRegressor
 import matplotlib.pyplot as plt
-from dotenv import load_dotenv
-import os
-from sklearn.model_selection import GridSearchCV
-
-
+import talib
 import yfinance as yf
-
+from dotenv import load_dotenv
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split
 
 load_dotenv()
 
@@ -68,11 +60,15 @@ def preprocess_data(df):
 
     df_processed["EMA_10"] = talib.EMA(df_processed["Close"], timeperiod=10)
     df_processed["EMA_30"] = talib.EMA(df_processed["Close"], timeperiod=30)
-    df_processed["Stoch"], df_processed["Stoch_signal"] = talib.STOCH(df_processed["High"], df_processed["Low"], df_processed["Close"])
+    df_processed["Stoch"], df_processed["Stoch_signal"] = talib.STOCH(df_processed["High"], df_processed["Low"],
+                                                                      df_processed["Close"])
     df_processed["OBV"] = talib.OBV(df_processed["Close"], df_processed["Volume"])
     df_processed["ATR"] = talib.ATR(df_processed["High"], df_processed["Low"], df_processed["Close"])
     df_processed["ROC"] = talib.ROC(df_processed["Close"])
-    df_processed["MACD"], df_processed["MACD_signal"], df_processed["MACD_hist"] = talib.MACD(df_processed["Close"], fastperiod=12, slowperiod=26, signalperiod=9)
+    df_processed["MACD"], df_processed["MACD_signal"], df_processed["MACD_hist"] = talib.MACD(df_processed["Close"],
+                                                                                              fastperiod=12,
+                                                                                              slowperiod=26,
+                                                                                              signalperiod=9)
 
     # Drop missing values
     df_processed = df_processed.dropna()
@@ -86,16 +82,15 @@ def preprocess_data(df):
     return df_processed
 
 
-
 # Train and evaluate a machine learning model
 def train_model(df):
     features = df.columns.drop(["target"]).tolist()
     target = "target"
 
-    X = df[features]
+    x = df[features]
     y = df[target]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
 
     model = GradientBoostingRegressor(random_state=42)
 
@@ -108,18 +103,18 @@ def train_model(df):
     }
 
     grid_search = GridSearchCV(model, param_grid, cv=5, scoring="neg_mean_squared_error", n_jobs=-1, verbose=1)
-    grid_search.fit(X_train, y_train)
+    grid_search.fit(x_train, y_train)
 
     best_model = grid_search.best_estimator_
 
-    y_pred = best_model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
+    y_prediction = best_model.predict(x_test)
+    mse = mean_squared_error(y_test, y_prediction)
     print(f"Mean Squared Error: {mse}")
 
     # Plot the stock data with the predicted values
     plt.figure(figsize=(14, 8))
-    plt.plot(df.index[-len(y_test) :], y_test, label="Actual Prices", color="blue")
-    plt.plot(df.index[-len(y_test) :], y_pred, label="Predicted Prices", color="red")
+    plt.plot(df.index[-len(y_test):], y_test, label="Actual Prices", color="blue")
+    plt.plot(df.index[-len(y_test):], y_prediction, label="Predicted Prices", color="red")
     plt.xlabel("Date")
     plt.ylabel("Price")
     plt.title("Stock Price Prediction")
