@@ -12,7 +12,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
-from config import PLOT_SIZE, ACTUAL_COLOR, PREDICTED_COLOR
+from config import PLOT_SIZE, ACTUAL_COLOR, PREDICTED_COLOR, SAVE_MODELS, SAVE_PLOTS
 
 load_dotenv()
 
@@ -127,15 +127,16 @@ def train_model(symbol, df):
     logging.info(f"Mean Squared Error: {mse}")
 
     # Save the trained model to a file
-    model_filename = f"model_{symbol}_{datetime.now().strftime('%Y-%m-%d')}.joblib"
-    dir_name = os.path.join(os.path.dirname(__file__), 'models')
-    filename = os.path.join(dir_name, model_filename)
+    if SAVE_MODELS is True:
+        model_filename = f"model_{symbol}_{datetime.now().strftime('%Y-%m-%d')}.joblib"
+        dir_name = os.path.join(os.path.dirname(__file__), 'models')
+        filename = os.path.join(dir_name, model_filename)
 
-    # Ensure the directory exists
-    os.makedirs(dir_name, exist_ok=True)
+        # Ensure the directory exists
+        os.makedirs(dir_name, exist_ok=True)
 
-    save_model(best_model, filename)
-    print(f"Model saved to: {filename}")
+        save_model(best_model, filename)
+        print(f"Model saved to: {filename}")
 
     # Plot the stock data with the predicted values
     plot_results(symbol, df, y_prediction, y_test)
@@ -159,13 +160,14 @@ def plot_results(symbol, df, y_prediction, y_test):
     plt.title("Stock Price Prediction")
     plt.legend()
 
-    fig_filename = f"{symbol}_muie_psd.jpg"
-    dir_name = os.path.join(os.path.dirname(__file__), 'plots')
-    filename = os.path.join(dir_name, fig_filename)
-    # Ensure the directory exists
-    os.makedirs(dir_name, exist_ok=True)
-    plt.savefig(filename)
-    return plt
+    if SAVE_PLOTS is True:
+        fig_filename = f"{symbol}_muie_psd.jpg"
+        dir_name = os.path.join(os.path.dirname(__file__), 'plots')
+        filename = os.path.join(dir_name, fig_filename)
+        # Ensure the directory exists
+        os.makedirs(dir_name, exist_ok=True)
+        plt.savefig(filename)
+        return plt
 
 
 # Train and evaluate a machine learning model for multiple stocks

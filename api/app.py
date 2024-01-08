@@ -3,7 +3,7 @@ from datetime import datetime
 from threading import Thread
 
 from learning_model import fetch_data_multiple, preprocess_data, train_models
-from main import generate_signals, execute_trades
+from api.trading import generate_signals, execute_trades
 
 app = Flask(__name__)
 
