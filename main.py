@@ -1,7 +1,7 @@
 from datetime import datetime
 import alpaca_trade_api as trade_api
 
-from learning_model import fetch_data_multiple, preprocess_data, train_models
+from learning_model import preprocess_data, train_models, fetch_data_multiple, save_model
 
 from dotenv import load_dotenv
 import os
@@ -78,30 +78,12 @@ def execute_trades(signals):
 
             # Submit a sell order
             print(f"Submitting a sell order for {symbol}, quantity: {sell_qty}, time_in_force: gtc")
-            api.submit_order(
-                symbol=symbol, qty=sell_qty, side="sell", type="market", time_in_force="gtc"
-            )
+
+            try:
+                api.submit_order(
+                    symbol=symbol, qty=sell_qty, side="sell", type="market", time_in_force="gtc"
+                )
+            except trade_api.rest.APIError as e:
+                print(f"trade_api.rest.APIError {e}")
         else:
             print(f"No trading done for {symbol}, position was: {position}")
-
-
-# Schedule the bot to run once per day
-if __name__ == "__main__":
-    # Define the list of stock symbols
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMC", "COST", "LEVI", "SKLZ", "ABNB", "GOOG", "TELL", "BABA", "GFAI", "DEA",
-               "DNA", "BOIL"]
-
-    # Fetch historical data for multiple stocks
-    start = "2018-01-01"
-    # end = "2022-01-01"
-    end = datetime.now()
-    data = fetch_data_multiple(symbols, start, end)
-
-    # Train models for multiple stocks
-    models, feature_names = train_models(data)
-
-    # Generate buy/sell signals
-    signals = generate_signals(models, feature_names, data)
-
-    # Execute the trades
-    execute_trades(signals)

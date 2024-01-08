@@ -1,3 +1,8 @@
+import logging
+import os
+from datetime import datetime
+
+import joblib
 import matplotlib.pyplot as plt
 import talib
 import yfinance as yf
@@ -7,7 +12,12 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 
+from config import PLOT_SIZE, ACTUAL_COLOR, PREDICTED_COLOR
+
 load_dotenv()
+
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
 
 
 # Fetch historical data for a stock
@@ -18,6 +28,7 @@ def fetch_data(symbol, start, end):
         if df.empty:
             print(f"No data found for {symbol} in the specified date range.")
             return None
+        logging.info(f"Downloaded data for symbol {symbol} for date range {start} - {end}")
         return df
     except Exception as e:
         print(f"Error fetching data for {symbol}: {e}")
@@ -31,6 +42,7 @@ def fetch_data_multiple(symbols, start, end):
         df = fetch_data(symbol, start, end)
         if df is not None:
             data[symbol] = df
+    logging.info('fetch_data_multiple ended')
     return data
 
 
@@ -83,7 +95,7 @@ def preprocess_data(df):
 
 
 # Train and evaluate a machine learning model
-def train_model(df):
+def train_model(symbol, df):
     features = df.columns.drop(["target"]).tolist()
     target = "target"
 
@@ -107,21 +119,53 @@ def train_model(df):
 
     best_model = grid_search.best_estimator_
 
+    # Log feature importance
+    log_feature_importance(best_model, features)
+
     y_prediction = best_model.predict(x_test)
     mse = mean_squared_error(y_test, y_prediction)
-    print(f"Mean Squared Error: {mse}")
+    logging.info(f"Mean Squared Error: {mse}")
+
+    # Save the trained model to a file
+    model_filename = f"model_{symbol}_{datetime.now().strftime('%Y-%m-%d')}.joblib"
+    dir_name = os.path.join(os.path.dirname(__file__), 'models')
+    filename = os.path.join(dir_name, model_filename)
+
+    # Ensure the directory exists
+    os.makedirs(dir_name, exist_ok=True)
+
+    save_model(best_model, filename)
+    print(f"Model saved to: {filename}")
 
     # Plot the stock data with the predicted values
-    plt.figure(figsize=(14, 8))
-    plt.plot(df.index[-len(y_test):], y_test, label="Actual Prices", color="blue")
-    plt.plot(df.index[-len(y_test):], y_prediction, label="Predicted Prices", color="red")
+    plot_results(symbol, df, y_prediction, y_test)
+
+    return best_model, features
+
+
+def log_feature_importance(best_model, features):
+    feature_importance = best_model.feature_importances_
+    logging.info("Feature Importance:")
+    for feature, importance in zip(features, feature_importance):
+        logging.info(f"{feature}: {importance}")
+
+
+def plot_results(symbol, df, y_prediction, y_test):
+    plt.figure(figsize=PLOT_SIZE)
+    plt.plot(df.index[-len(y_test):], y_test, label="Actual Prices", color=ACTUAL_COLOR)
+    plt.plot(df.index[-len(y_test):], y_prediction, label="Predicted Prices", color=PREDICTED_COLOR)
     plt.xlabel("Date")
     plt.ylabel("Price")
     plt.title("Stock Price Prediction")
     plt.legend()
-    # plt.show()
 
-    return best_model, features
+    fig_filename = f"{symbol}_muie_psd.jpg"
+    dir_name = os.path.join(os.path.dirname(__file__), 'plots')
+    filename = os.path.join(dir_name, fig_filename)
+    # Ensure the directory exists
+    os.makedirs(dir_name, exist_ok=True)
+    plt.savefig(filename)
+    return plt
 
 
 # Train and evaluate a machine learning model for multiple stocks
@@ -129,9 +173,29 @@ def train_models(data):
     models = {}
     feature_names = {}
     for symbol, df in data.items():
-        print(f"Training model for {symbol}")
+        model_filename = f"model_{symbol}_{datetime.now().strftime('%Y-%m-%d')}.joblib"
+        loaded_model = load_model(model_filename)
+        if loaded_model:
+            print(f"Model already existing for {symbol}")
+            models[symbol] = loaded_model
+            continue
+
+        print(f"Started training the model for {symbol}")
         processed_data = preprocess_data(df)
-        model, features = train_model(processed_data)
+        model, features = train_model(symbol, processed_data)
         models[symbol] = model
         feature_names[symbol] = features
     return models, feature_names
+
+
+# Save model to disk
+def save_model(model, filename):
+    joblib.dump(model, filename)
+
+
+# Load model from disk
+def load_model(filename):
+    try:
+        return joblib.load(filename)
+    except FileNotFoundError as e:
+        return None
