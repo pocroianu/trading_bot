@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Configuration</title>
+</head>
+<body>
+    <h1>Trading Bot Configuration</h1>
+    <form action="{{ url_for('configure') }}" method="post">
+        <label for="schedule_time">Schedule Time:</label>
+        <input type="text" id="schedule_time" name="schedule_time" value="{{ config.schedule_time }}" required>
+        <button type="submit">Save Configuration</button>
+    </form>
+    <form action="{{ url_for('run_bot') }}" method="post">
+        <button type="submit">Run Bot</button>
+    </form>
+</body>
+</html>
