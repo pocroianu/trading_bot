@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { SetStateAction, useState } from 'react';
 
 
 const Index = () => {
   const [scheduleTime, setScheduleTime] = useState('09:00');
 
-  const handleScheduleChange = (e) => {
+  const handleScheduleChange = (e: { target: { value: SetStateAction<string>; }; }) => {
     setScheduleTime(e.target.value);
   };
 
